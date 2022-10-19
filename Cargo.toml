@@ -1,8 +1,12 @@
 [package]
-name = "bot-rs"
+name = "unibot-rs"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+dotenv = "0.15.0"
+ethers = { version = "0.17.0", features = ["abigen", "rustls", "ws"] }
+tokio = { version = "1.20.1", features = ["full"] }
+eyre = { version = "0.6.8"}
