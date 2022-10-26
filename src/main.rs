@@ -1,6 +1,7 @@
 use dotenv::dotenv;
 use ethers::{
     abi::AbiDecode,
+    abi::AbiError,
     prelude::*,
     providers::{Provider, Ws},
 };
@@ -44,19 +45,83 @@ async fn main() -> Result<()> {
             if tx.to.unwrap() == univ2_router {
                 println!("Uni transaction founded: tx={:?}", tx.hash);
 
-                if let decoded = SwapExactTokensForTokensCall::decode(&tx.input)
-                    .and_then(SwapExactETHForTokensCall::decode(&tx.input))
-                {
-                    println!("no abi match");
-                }
+                let mut pair_path: H160 = "0x0000000000000000000000000000000000000000"
+                    .parse::<H160>()
+                    .unwrap();
 
-                let mut path = decoded.path.into_iter();
-                let from = path.next().unwrap();
-                let to = path.next().unwrap();
-                println!(
-                    "Swapped {} of token {} for {} of token {}",
-                    decoded.amount_in, from, decoded.amount_out_min, to
-                );
+                if let Ok(decoded) = SwapExactTokensForTokensCall::decode(&tx.input) {
+                    let amount_in = decoded.amount_in;
+                    let amount_out_min = decoded.amount_out_min;
+                    let mut path = decoded.path.into_iter();
+                    let from = path.next().unwrap();
+                    let to = path.next().unwrap();
+                    let address_to = decoded.to;
+                    let deadline = decoded.deadline;
+                    println!(
+                        "{:?} {:?} {:?} {:?} {:?} {:?}",
+                        amount_in, amount_out_min, from, to, address_to, deadline
+                    );
+                } else if let Ok(decoded) = SwapTokensForExactTokensCall::decode(&tx.input) {
+                    let amount_out = decoded.amount_out;
+                    let amount_in_max = decoded.amount_in_max;
+                    let mut path = decoded.path.into_iter();
+                    let from = path.next().unwrap();
+                    let to = path.next().unwrap();
+                    let address_to = decoded.to;
+                    let deadline = decoded.deadline;
+                    println!(
+                        "{:?} {:?} {:?} {:?} {:?} {:?}",
+                        amount_out, amount_in_max, from, to, address_to, deadline
+                    );
+                } else if let Ok(decoded) = SwapExactETHForTokensCall::decode(&tx.input) {
+                    let amount_out_min = decoded.amount_out_min;
+                    let mut path = decoded.path.into_iter();
+                    let from = path.next().unwrap();
+                    let to = path.next().unwrap();
+                    let address_to = decoded.to;
+                    let deadline = decoded.deadline;
+                    println!(
+                        "{:?} {:?} {:?}  {:?} {:?}",
+                        amount_out_min, from, to, address_to, deadline
+                    );
+                } else if let Ok(decoded) = SwapTokensForExactETHCall::decode(&tx.input) {
+                    let amount_out = decoded.amount_out;
+                    let amount_in_max = decoded.amount_in_max;
+                    let mut path = decoded.path.into_iter();
+                    let from = path.next().unwrap();
+                    let to = path.next().unwrap();
+                    let address_to = decoded.to;
+                    let deadline = decoded.deadline;
+                    println!(
+                        "{:?} {:?} {:?} {:?} {:?} {:?}",
+                        amount_out, amount_in_max, from, to, address_to, deadline
+                    );
+                } else if let Ok(decoded) = SwapExactTokensForETHCall::decode(&tx.input) {
+                    let amount_in = decoded.amount_in;
+                    let amount_out_min = decoded.amount_out_min;
+                    let mut path = decoded.path.into_iter();
+                    let from = path.next().unwrap();
+                    let to = path.next().unwrap();
+                    let address_to = decoded.to;
+                    let deadline = decoded.deadline;
+                    println!(
+                        "{:?} {:?} {:?} {:?} {:?} {:?}",
+                        amount_in, amount_out_min, from, to, address_to, deadline
+                    );
+                } else if let Ok(decoded) = SwapETHForExactTokensCall::decode(&tx.input) {
+                    let amount_out = decoded.amount_out;
+                    let mut path = decoded.path.into_iter();
+                    let from = path.next().unwrap();
+                    let to = path.next().unwrap();
+                    let address_to = decoded.to;
+                    let deadline = decoded.deadline;
+                    println!(
+                        "{:?} {:?} {:?}  {:?} {:?}",
+                        amount_out, from, to, address_to, deadline
+                    );
+                } else {
+                    println!("AbiError");
+                }
             } else {
                 println!("from:  {:?} -> {:?}", tx.from, tx.to)
             }
