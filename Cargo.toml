@@ -10,3 +10,5 @@ dotenv = "0.15.0"
 ethers = { version = "0.17.0", features = ["abigen", "rustls", "ws"] }
 tokio = { version = "1.20.1", features = ["full"] }
 eyre = { version = "0.6.8"}
+sha3 = { version = "0.10.6"}
+hex = "0.4.3"

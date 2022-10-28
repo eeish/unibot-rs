@@ -88,24 +88,11 @@ fn parse_tx(tx: &Transaction, router: &Address) {
         } else if let Ok(decoded) = SwapExactETHForTokensCall::decode(&tx.input) {
             /// only implements this abi
             let amount_out_min = decoded.amount_out_min;
-            let mut path = decoded.path.into_iter();
-            let from = path.next().unwrap();
-            let to = path.next().unwrap();
+            let path = decoded.path;
             let address_to = decoded.to;
             let deadline = decoded.deadline;
 
-            router::swap_eth_for_exact_tokens_router(
-                amount_out_min,
-                from,
-                to,
-                address_to,
-                deadline,
-            );
-
-            println!(
-                "{:?} {:?} {:?}  {:?} {:?}",
-                amount_out_min, from, to, address_to, deadline
-            );
+            router::swap_eth_for_exact_tokens_router(amount_out_min, path, address_to, deadline);
         } else if let Ok(decoded) = SwapTokensForExactETHCall::decode(&tx.input) {
             let amount_out = decoded.amount_out;
             let amount_in_max = decoded.amount_in_max;
@@ -126,6 +113,7 @@ fn parse_tx(tx: &Transaction, router: &Address) {
             let to = path.next().unwrap();
             let address_to = decoded.to;
             let deadline = decoded.deadline;
+            print_type_of(&path);
             println!(
                 "{:?} {:?} {:?} {:?} {:?} {:?}",
                 amount_in, amount_out_min, from, to, address_to, deadline
@@ -137,6 +125,7 @@ fn parse_tx(tx: &Transaction, router: &Address) {
             let to = path.next().unwrap();
             let address_to = decoded.to;
             let deadline = decoded.deadline;
+
             println!(
                 "{:?} {:?} {:?}  {:?} {:?}",
                 amount_out, from, to, address_to, deadline
