@@ -75,11 +75,6 @@ fn address_pop(addr: &[u8]) -> &[u8; 20] {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ethers::abi::Token;
-    use ethers::abi::*;
-    use ethers::types::Address;
-    use ethers::utils::keccak256;
-    use std::str;
 
     #[test]
     fn test_sort_token() {
@@ -92,24 +87,6 @@ mod tests {
         assert_eq!((token_usdc, token_usdt), sort_token(token_usdt, token_usdc));
     }
 
-    //// #[test]
-    //// fn test_create2_salt_gen() {
-    ////     let token_usdt = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-    ////         .parse::<ethers::types::Address>()
-    ////         .unwrap();
-    ////     let token_usdc = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"
-    ////         .parse::<ethers::types::Address>()
-    ////         .unwrap();
-
-    ////     let input = abi::encode(&vec![
-    ////         Token::Address(token_usdt),
-    ////         Token::Address(token_usdc),
-    ////     ]);
-    ////     assert_eq!(
-    ////         "0xd4eb34f6fc5238007dd65d8d3f4e0ec192c1af0afab7ee25cd0d05284ddc2f48",
-    ////         keccak256(&input)
-    ////     );
-    //// }
     #[test]
     fn test_get_uni_pair_address() {
         let token_usdt = "dAC17F958D2ee523a2206206994597C13D831ec7"
@@ -125,13 +102,4 @@ mod tests {
             get_uni_pair_address(token_usdt, token_usdc)
         );
     }
-
-    //// #[test]
-    //// fn test_address_to_bytes() {
-    ////     let token_usdt = "0xdAC17F958D2ee523a2206206994597C13D831ec7"
-    ////         .parse::<Address>()
-    ////         .unwrap();
-
-    ////     assert_eq!()
-    //// }
 }
