@@ -12,6 +12,7 @@ pub mod utils;
 use utils::debug_print::*;
 
 mod constants;
+mod env_store;
 mod router;
 
 abigen!(

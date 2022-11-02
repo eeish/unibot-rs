@@ -5,6 +5,8 @@ use ethers::utils::keccak256;
 use hex;
 use sha3::{Digest, Keccak256};
 
+use crate::utils::contract_abi::UniswapV2Router02;
+
 pub fn get_univ2_exact_weth_token_min_recv(amount_out_min: U256, path: Vec<Address>) {
     let user_min_recv = amount_out_min;
 
@@ -13,6 +15,7 @@ pub fn get_univ2_exact_weth_token_min_recv(amount_out_min: U256, path: Vec<Addre
         let to = path[index - 1];
 
         let pair_address = get_uni_pair_address(from, to);
+        let (reserve_from, reserve_to) = get_univ2_reserve(pair_address, from, to);
     }
 }
 
@@ -46,6 +49,11 @@ pub fn get_uni_pair_address(from: Address, to: Address) -> Address {
     );
 
     pair_address
+}
+
+pub fn get_univ2_reserve(pair_address: Address, from: Address, to: Address) -> (u64, u64) {
+    //let UniswapV2Router02::get_reser
+    (1, 1)
 }
 
 pub fn sort_token(from: Address, to: Address) -> (Address, Address) {
