@@ -1,11 +1,10 @@
-use ethers::abi::*;
 use ethers::prelude::*;
 use ethers::types::Address;
 use ethers::utils::keccak256;
 use hex;
 use sha3::{Digest, Keccak256};
 
-use crate::utils::contract_abi::UniswapV2Router02;
+//use crate::utils::contract_abi::UniswapV2Router02;
 
 pub fn get_univ2_exact_weth_token_min_recv(amount_out_min: U256, path: Vec<Address>) {
     let user_min_recv = amount_out_min;
@@ -35,8 +34,8 @@ pub fn get_uni_pair_address(from: Address, to: Address) -> Address {
     let to_byte_array = to.as_bytes().to_vec();
     extend_byte_array.extend(to_byte_array);
 
-    /// Attention here, ethers-rs: abi encoding not work
-    /// let input = abi::encode(&vec![Token::Address(from), Token::Address(to)]);
+    //// Attention here, ethers-rs: abi encoding not work
+    //// let input = abi::encode(&vec![Token::Address(from), Token::Address(to)]);
     let salt = keccak256(&extend_byte_array);
 
     let salt2 =

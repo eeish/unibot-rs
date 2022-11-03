@@ -1,1 +1,3 @@
+pub const UNIV2_ROUTER02_ADDRESS: &str = "5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f";
+
 pub const TESTNUM: u8 = 8;
