@@ -1,8 +1,8 @@
-use hex::FromHexError;
+use std::error::Error;
 use std::fmt;
 
 #[derive(Debug, Clone)]
-struct EnvError {
+pub struct EnvError {
     details: String,
 }
 
@@ -24,6 +24,8 @@ impl From<()> for EnvError {
     }
 }
 
+impl Error for EnvError {}
+
 fn get_env_var(var: &str) -> Result<String, EnvError> {
     std::env::var(var).map_err(|e| EnvError {
         details: e.to_string(),
@@ -44,7 +46,7 @@ pub struct EnvStore {
 }
 
 impl EnvStore {
-    fn new(ws_url_var: &str, eth_private_key_var: &str) -> Result<EnvStore, EnvError> {
+    pub fn new(ws_url_var: &str, eth_private_key_var: &str) -> Result<EnvStore, EnvError> {
         Ok(EnvStore {
             ws_url: get_env_var(ws_url_var)?,
             eth_private_key: convert_val_to_key(get_env_var(eth_private_key_var)?).unwrap(),

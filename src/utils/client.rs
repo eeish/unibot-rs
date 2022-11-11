@@ -5,12 +5,18 @@ use crate::utils::contract_abi::UniswapV2Router02;
 use std::env::VarError;
 use std::sync::Arc;
 
+use eyre::Result;
+
 use ethers::{
-    prelude::{k256::ecdsa::SigningKey, ContractError, SignerMiddleware},
+    prelude::{
+        k256::ecdsa::SigningKey, ContractError, SignerMiddleware, SubscriptionStream, Transaction,
+        TxHash,
+    },
     providers::{Middleware, Provider, ProviderError, Ws, WsClientError},
     signers::{LocalWallet, Signer, Wallet},
     types::Address,
 };
+
 use hex::FromHexError;
 
 #[derive(Debug)]
@@ -61,5 +67,13 @@ impl<'a> UniswapV2Client {
             ),
             provider: provider,
         })
+    }
+
+    pub async fn get_pending_txs(&self) -> SubscriptionStream<'_, Ws, TxHash> {
+        self.provider.subscribe_pending_txs().await.unwrap()
+    }
+
+    pub async fn get_transaction(&self, tx: TxHash) -> Option<Transaction> {
+        self.provider.get_transaction(tx).await.unwrap()
     }
 }

@@ -2,7 +2,6 @@ use ethers::prelude::*;
 use ethers::types::Address;
 use ethers::utils::keccak256;
 use hex;
-use sha3::{Digest, Keccak256};
 
 //use crate::utils::contract_abi::UniswapV2Router02;
 
@@ -63,21 +62,16 @@ pub fn sort_token(from: Address, to: Address) -> (Address, Address) {
     }
 }
 
-fn create2_salt(token0: &[u8; 20], token1: &[u8; 20]) -> [u8; 32] {
-    let mut hasher = Keccak256::new();
-    hasher.update(token0);
-    hasher.update(token1);
-
-    let mut code_hash = [0; 32];
-    code_hash.copy_from_slice(&hasher.finalize());
-
-    code_hash
-}
-
-fn address_pop(addr: &[u8]) -> &[u8; 20] {
-    addr.try_into()
-        .expect("address raw bytes array length can't cast to 20")
-}
+////fn create2_salt(token0: &[u8; 20], token1: &[u8; 20]) -> [u8; 32] {
+////    let mut hasher = Keccak256::new();
+////    hasher.update(token0);
+////    hasher.update(token1);
+////
+////    let mut code_hash = [0; 32];
+////    code_hash.copy_from_slice(&hasher.finalize());
+////
+////    code_hash
+////}
 
 #[cfg(test)]
 mod tests {

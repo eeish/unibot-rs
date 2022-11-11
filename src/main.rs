@@ -9,6 +9,7 @@ use std::env;
 use std::sync::Arc;
 
 pub mod utils;
+use utils::client::*;
 use utils::debug_print::*;
 
 mod constants;
@@ -36,15 +37,17 @@ async fn main() -> Result<()> {
     let infura_url: String = env::var("INFURA_MAINNET_WS").unwrap();
     let univ2_router: Address = env::var("UNIV2_ROUTE").unwrap().parse().unwrap();
 
-    let client = Provider::<Ws>::connect(infura_url).await?;
+    let envstore = env_store::EnvStore::new("INFURA_MAINNET_WS", "ETH_PRIVATE_KEY")?;
+
+    let client = UniswapV2Client::new(envstore).await.unwrap();
     let client = Arc::new(client);
 
-    let mut stream = client.subscribe_pending_txs().await?;
+    let mut stream = client.get_pending_txs().await;
 
-    while let Some(tx) = stream.next().await {
-        let tx = client.get_transaction(tx).await?;
+    while let Some(tx_hash) = stream.next().await {
+        let tx = client.get_transaction(tx_hash).await;
 
-        if !tx.is_none() {
+        if tx.is_some() {
             let tx = tx.unwrap();
             parse_tx(&tx, &univ2_router);
         } else {
