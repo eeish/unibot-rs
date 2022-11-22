@@ -14,7 +14,6 @@ use utils::debug_print::*;
 
 mod constants;
 mod env_store;
-mod router;
 
 abigen!(
     IUniswapV2Router02,
@@ -49,7 +48,7 @@ async fn main() -> Result<()> {
 
         if tx.is_some() {
             let tx = tx.unwrap();
-            parse_tx(&tx, &univ2_router);
+            parse_tx(Arc::clone(&client), &tx, &univ2_router);
         } else {
             continue;
         }
@@ -57,7 +56,7 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn parse_tx(tx: &Transaction, router: &Address) {
+fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
     if tx.to.unwrap() == *router {
         println!("Uni transaction founded: tx={:?}", tx.hash);
 
@@ -96,7 +95,7 @@ fn parse_tx(tx: &Transaction, router: &Address) {
             let address_to = decoded.to;
             let deadline = decoded.deadline;
 
-            router::swap_eth_for_exact_tokens_router(amount_out_min, path, address_to, deadline);
+            client.swap_eth_for_exact_tokens(amount_out_min, path, address_to, deadline);
         } else if let Ok(decoded) = SwapTokensForExactETHCall::decode(&tx.input) {
             let amount_out = decoded.amount_out;
             let amount_in_max = decoded.amount_in_max;

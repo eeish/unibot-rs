@@ -1,9 +1,12 @@
 use crate::constants::*;
 use crate::env_store::EnvStore;
 use crate::utils::contract_abi::UniswapV2Router02;
+use crate::utils::univ2;
 
+use ethers::prelude::*;
 use std::env::VarError;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use eyre::Result;
 
@@ -36,6 +39,11 @@ pub struct UniswapV2Client {
     envstore: EnvStore,
     provider: Arc<UniswapV2Middleware>,
     router: UniswapV2Router02<UniswapV2Middleware>,
+}
+
+fn time() -> u64 {
+    let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
+    return time.as_secs();
 }
 
 impl<'a> UniswapV2Client {
@@ -75,5 +83,20 @@ impl<'a> UniswapV2Client {
 
     pub async fn get_transaction(&self, tx: TxHash) -> Option<Transaction> {
         self.provider.get_transaction(tx).await.unwrap()
+    }
+
+    pub fn swap_eth_for_exact_tokens(
+        &self,
+        amount_out_min: U256,
+        path: Vec<Address>,
+        to: Address,
+        deadline: U256,
+    ) {
+        if U256::from(time()) > deadline {
+            println!("deadline exceeded, can't mev op");
+            return;
+        }
+
+        univ2::get_univ2_exact_weth_token_min_recv(amount_out_min, path);
     }
 }
