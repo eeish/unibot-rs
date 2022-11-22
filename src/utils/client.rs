@@ -4,6 +4,7 @@ use crate::utils::contract_abi::UniswapV2Router02;
 use crate::utils::univ2;
 
 use ethers::prelude::*;
+use ethers::utils::keccak256;
 use std::env::VarError;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -40,6 +41,13 @@ pub struct UniswapV2Client {
     provider: Arc<UniswapV2Middleware>,
     router: UniswapV2Router02<UniswapV2Middleware>,
 }
+
+abigen!(
+    IUniswapV2Pair,
+    r#"[
+        function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)
+    ]"#,
+);
 
 fn time() -> u64 {
     let time = SystemTime::now().duration_since(UNIX_EPOCH).unwrap();
@@ -97,6 +105,70 @@ impl<'a> UniswapV2Client {
             return;
         }
 
-        univ2::get_univ2_exact_weth_token_min_recv(amount_out_min, path);
+        self.get_univ2_exact_weth_token_min_recv(amount_out_min, path);
+    }
+
+    pub async fn get_univ2_exact_weth_token_min_recv(
+        &self,
+        amount_out_min: U256,
+        path: Vec<Address>,
+    ) {
+        let user_min_recv = amount_out_min;
+
+        for index in (path.capacity() - 1)..1 {
+            let from = path[index];
+            let to = path[index - 1];
+
+            let pair_address = self.get_uni_pair_address(from, to);
+            let (reserve_from, reserve_to) = self.get_univ2_reserve(pair_address, from, to).await;
+        }
+    }
+
+    pub fn get_uni_pair_address(&self, from: Address, to: Address) -> Address {
+        let (from, to) = univ2::sort_token(from, to);
+
+        //// TODO remove hard code uniswapv2 factory address
+        let factory = "5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+            .parse::<Address>()
+            .unwrap();
+
+        //// TODO remove hard code init code
+        let init_code_hash =
+            hex::decode("96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f")
+                .unwrap();
+
+        let mut extend_byte_array = from.as_bytes().to_vec();
+        let to_byte_array = to.as_bytes().to_vec();
+        extend_byte_array.extend(to_byte_array);
+
+        //// Attention here, ethers-rs: abi encoding not work
+        //// let input = abi::encode(&vec![Token::Address(from), Token::Address(to)]);
+        let salt = keccak256(&extend_byte_array);
+
+        let salt2 = hex::decode("4aafb64a36177dc82e7ace74cf60cc655659bc049da9533b5f7a6881bea995c6")
+            .unwrap();
+
+        let pair_address = ethers::core::utils::get_create2_address_from_hash(
+            factory,
+            salt.to_vec(),
+            init_code_hash.to_vec(),
+        );
+
+        pair_address
+    }
+
+    pub async fn get_univ2_reserve(
+        &self,
+        pair_address: Address,
+        from: Address,
+        to: Address,
+    ) -> (u128, u128) {
+        println!("start pool reserve!!!");
+
+        let pair = IUniswapV2Pair::new(pair_address, Arc::clone(&self.provider));
+        let (reserve0, reserve1, _timestamp) = pair.get_reserves().call().await.unwrap();
+        println!("Reserves (from, to): ({}, {})", reserve0, reserve1);
+
+        (reserve0, reserve1)
     }
 }

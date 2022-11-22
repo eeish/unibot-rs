@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
 
         if tx.is_some() {
             let tx = tx.unwrap();
-            parse_tx(Arc::clone(&client), &tx, &univ2_router);
+            parse_tx(Arc::clone(&client), &tx, &univ2_router).await;
         } else {
             continue;
         }
@@ -56,13 +56,9 @@ async fn main() -> Result<()> {
     Ok(())
 }
 
-fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
+async fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
     if tx.to.unwrap() == *router {
         println!("Uni transaction founded: tx={:?}", tx.hash);
-
-        //// let mut pair_path: H160 = "0x0000000000000000000000000000000000000000"
-        ////     .parse::<H160>()
-        ////     .unwrap();
 
         if let Ok(decoded) = SwapExactTokensForTokensCall::decode(&tx.input) {
             let amount_in = decoded.amount_in;
@@ -72,10 +68,8 @@ fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
             let to = path.next().unwrap();
             let address_to = decoded.to;
             let deadline = decoded.deadline;
-            println!(
-                "{:?} {:?} {:?} {:?} {:?} {:?}",
-                amount_in, amount_out_min, from, to, address_to, deadline
-            );
+            let pair_address = client.get_uni_pair_address(from, to);
+            client.get_univ2_reserve(pair_address, from, to).await;
         } else if let Ok(decoded) = SwapTokensForExactTokensCall::decode(&tx.input) {
             let amount_out = decoded.amount_out;
             let amount_in_max = decoded.amount_in_max;
@@ -84,10 +78,8 @@ fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
             let to = path.next().unwrap();
             let address_to = decoded.to;
             let deadline = decoded.deadline;
-            println!(
-                "{:?} {:?} {:?} {:?} {:?} {:?}",
-                amount_out, amount_in_max, from, to, address_to, deadline
-            );
+            let pair_address = client.get_uni_pair_address(from, to);
+            client.get_univ2_reserve(pair_address, from, to).await;
         } else if let Ok(decoded) = SwapExactETHForTokensCall::decode(&tx.input) {
             //// only implements this abi
             let amount_out_min = decoded.amount_out_min;
@@ -104,10 +96,9 @@ fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
             let to = path.next().unwrap();
             let address_to = decoded.to;
             let deadline = decoded.deadline;
-            println!(
-                "{:?} {:?} {:?} {:?} {:?} {:?}",
-                amount_out, amount_in_max, from, to, address_to, deadline
-            );
+
+            let pair_address = client.get_uni_pair_address(from, to);
+            client.get_univ2_reserve(pair_address, from, to).await;
         } else if let Ok(decoded) = SwapExactTokensForETHCall::decode(&tx.input) {
             let amount_in = decoded.amount_in;
             let amount_out_min = decoded.amount_out_min;
@@ -116,11 +107,9 @@ fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
             let to = path.next().unwrap();
             let address_to = decoded.to;
             let deadline = decoded.deadline;
-            print_type_of(&path);
-            println!(
-                "{:?} {:?} {:?} {:?} {:?} {:?}",
-                amount_in, amount_out_min, from, to, address_to, deadline
-            );
+
+            let pair_address = client.get_uni_pair_address(from, to);
+            client.get_univ2_reserve(pair_address, from, to).await;
         } else if let Ok(decoded) = SwapETHForExactTokensCall::decode(&tx.input) {
             let amount_out = decoded.amount_out;
             let mut path = decoded.path.into_iter();
@@ -129,10 +118,8 @@ fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Address) {
             let address_to = decoded.to;
             let deadline = decoded.deadline;
 
-            println!(
-                "{:?} {:?} {:?}  {:?} {:?}",
-                amount_out, from, to, address_to, deadline
-            );
+            let pair_address = client.get_uni_pair_address(from, to);
+            client.get_univ2_reserve(pair_address, from, to).await;
         } else {
             println!("AbiError");
         }

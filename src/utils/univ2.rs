@@ -3,19 +3,12 @@ use ethers::types::Address;
 use ethers::utils::keccak256;
 use hex;
 
-//use crate::utils::contract_abi::UniswapV2Router02;
-
-pub fn get_univ2_exact_weth_token_min_recv(amount_out_min: U256, path: Vec<Address>) {
-    let user_min_recv = amount_out_min;
-
-    for index in (path.capacity() - 1)..1 {
-        let from = path[index];
-        let to = path[index - 1];
-
-        let pair_address = get_uni_pair_address(from, to);
-        let (reserve_from, reserve_to) = get_univ2_reserve(pair_address, from, to);
-    }
-}
+abigen!(
+    IUniswapV2Pair,
+    r#"[
+        function getReserves() external view returns (uint112 reserve0, uint112 reserve1, uint32 blockTimestampLast)
+    ]"#,
+);
 
 pub fn get_uni_pair_address(from: Address, to: Address) -> Address {
     let (from, to) = sort_token(from, to);
@@ -49,11 +42,6 @@ pub fn get_uni_pair_address(from: Address, to: Address) -> Address {
     pair_address
 }
 
-pub fn get_univ2_reserve(pair_address: Address, from: Address, to: Address) -> (u64, u64) {
-    //let UniswapV2Router02::get_reser
-    (1, 1)
-}
-
 pub fn sort_token(from: Address, to: Address) -> (Address, Address) {
     if from < to {
         (from, to)
@@ -61,17 +49,6 @@ pub fn sort_token(from: Address, to: Address) -> (Address, Address) {
         (to, from)
     }
 }
-
-////fn create2_salt(token0: &[u8; 20], token1: &[u8; 20]) -> [u8; 32] {
-////    let mut hasher = Keccak256::new();
-////    hasher.update(token0);
-////    hasher.update(token1);
-////
-////    let mut code_hash = [0; 32];
-////    code_hash.copy_from_slice(&hasher.finalize());
-////
-////    code_hash
-////}
 
 #[cfg(test)]
 mod tests {
