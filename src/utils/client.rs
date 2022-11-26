@@ -93,7 +93,7 @@ impl<'a> UniswapV2Client {
         self.provider.get_transaction(tx).await.unwrap()
     }
 
-    pub fn swap_eth_for_exact_tokens(
+    pub async fn swap_eth_for_exact_tokens(
         &self,
         amount_out_min: U256,
         path: Vec<Address>,
@@ -105,7 +105,8 @@ impl<'a> UniswapV2Client {
             return;
         }
 
-        self.get_univ2_exact_weth_token_min_recv(amount_out_min, path);
+        self.get_univ2_exact_weth_token_min_recv(amount_out_min, path)
+            .await;
     }
 
     pub async fn get_univ2_exact_weth_token_min_recv(
@@ -163,12 +164,15 @@ impl<'a> UniswapV2Client {
         from: Address,
         to: Address,
     ) -> (u128, u128) {
-        println!("start pool reserve!!!");
+        let (from_, to_) = univ2::sort_token(from, to);
 
         let pair = IUniswapV2Pair::new(pair_address, Arc::clone(&self.provider));
         let (reserve0, reserve1, _timestamp) = pair.get_reserves().call().await.unwrap();
-        println!("Reserves (from, to): ({}, {})", reserve0, reserve1);
 
-        (reserve0, reserve1)
+        if from == from_ {
+            (reserve0, reserve1)
+        } else {
+            (reserve1, reserve0)
+        }
     }
 }
