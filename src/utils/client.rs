@@ -122,6 +122,13 @@ impl<'a> UniswapV2Client {
 
             let pair_address = self.get_uni_pair_address(from, to);
             let (reserve_from, reserve_to) = self.get_univ2_reserve(pair_address, from, to).await;
+            let (a_amount_in, new_reserve_from, new_reserve_to) = univ2::get_univ2_data_given_out(
+                user_min_recv,
+                U256::from(reserve_from),
+                U256::from(reserve_to),
+            );
+
+            let user_min_recv = a_amount_in;
         }
     }
 

@@ -50,6 +50,28 @@ pub fn sort_token(from: Address, to: Address) -> (Address, Address) {
     }
 }
 
+pub fn get_univ2_data_given_out(
+    user_min_recv: U256,
+    reserve_from: U256,
+    reserve_to: U256,
+) -> (U256, U256, U256) {
+    let mut new_reserve_to = reserve_to - user_min_recv;
+    if new_reserve_to < U256::from(0) || new_reserve_to > reserve_to {
+        new_reserve_to = U256::from(1);
+    }
+
+    let numerator = reserve_from * user_min_recv * 1000;
+    let denominator = reserve_to * 997;
+    let a_amount_in = numerator / denominator + 1;
+
+    let mut new_reserve_from = reserve_from + a_amount_in;
+    if new_reserve_from < reserve_from {
+        new_reserve_from = U256::MAX;
+    }
+
+    (a_amount_in, new_reserve_from, new_reserve_to)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -78,6 +100,15 @@ mod tests {
                 .parse::<Address>()
                 .unwrap(),
             get_uni_pair_address(token_usdt, token_usdc)
+        );
+    }
+
+    #[test]
+    fn test_get_univ2_data_given_out() {
+        let res: (U256, U256, U256) = (U256::from(13), U256::from(1246), U256::from(23300));
+        assert_eq!(
+            res,
+            get_univ2_data_given_out(U256::from(233), U256::from(1233), U256::from(23533))
         );
     }
 }
