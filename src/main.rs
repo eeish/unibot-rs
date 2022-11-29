@@ -87,7 +87,7 @@ async fn parse_tx(client: Arc<UniswapV2Client>, tx: &Transaction, router: &Addre
             let address_to = decoded.to;
             let deadline = decoded.deadline;
 
-            client.swap_eth_for_exact_tokens(amount_out_min, path, address_to, deadline);
+            client.swap_eth_for_exact_tokens(tx.value, amount_out_min, path, address_to, deadline);
         } else if let Ok(decoded) = SwapTokensForExactETHCall::decode(&tx.input) {
             let amount_out = decoded.amount_out;
             let amount_in_max = decoded.amount_in_max;

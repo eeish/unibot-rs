@@ -95,6 +95,7 @@ impl<'a> UniswapV2Client {
 
     pub async fn swap_eth_for_exact_tokens(
         &self,
+        user_amount_in: U256,
         amount_out_min: U256,
         path: Vec<Address>,
         to: Address,
@@ -105,15 +106,23 @@ impl<'a> UniswapV2Client {
             return;
         }
 
-        self.get_univ2_exact_weth_token_min_recv(amount_out_min, path)
+        let user_min_recv = self
+            .get_univ2_exact_weth_token_min_recv(amount_out_min, &path)
             .await;
+
+        let weth = path[0];
+        let token = path[1];
+
+        let pair_to_sandwich = self.get_uni_pair_address(weth, token);
+        let (weth_reserve, token_reserve) =
+            self.get_univ2_reserve(pair_to_sandwich, weth, token).await;
     }
 
     pub async fn get_univ2_exact_weth_token_min_recv(
         &self,
         amount_out_min: U256,
-        path: Vec<Address>,
-    ) {
+        path: &Vec<Address>,
+    ) -> U256 {
         let user_min_recv = amount_out_min;
 
         for index in (path.capacity() - 1)..1 {
@@ -130,6 +139,8 @@ impl<'a> UniswapV2Client {
 
             let user_min_recv = a_amount_in;
         }
+
+        return user_min_recv;
     }
 
     pub fn get_uni_pair_address(&self, from: Address, to: Address) -> Address {
