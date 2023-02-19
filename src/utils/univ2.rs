@@ -64,12 +64,83 @@ pub fn get_univ2_data_given_out(
     let denominator = reserve_to * 997;
     let a_amount_in = numerator / denominator + 1;
 
-    let mut new_reserve_from = reserve_from + a_amount_in;
-    if new_reserve_from < reserve_from {
+    let (mut new_reserve_from, ok) = reserve_from.overflowing_add(a_amount_in);
+    if !ok {
         new_reserve_from = U256::MAX;
     }
 
     (a_amount_in, new_reserve_from, new_reserve_to)
+}
+
+pub fn get_univ2_data_given_in(
+    amountA_in: U256,
+    reserve_a: U256,
+    reserve_b: U256,
+) -> (U256, U256, U256) {
+    let amount_in_with_fee = amountA_in * 997;
+    let numerator = amount_in_with_fee * reserve_b;
+    let denominator = amount_in_with_fee + (reserve_a * 1000);
+    let amountB_out = numerator / denominator;
+
+    let (mut new_reserve_b, ok) = reserve_b.overflowing_sub(amountB_out);
+    if !ok {
+        new_reserve_b = U256::from(1);
+    }
+
+    let (mut new_reserve_a, ok) = reserve_a.overflowing_add(amountA_in);
+    if !ok {
+        new_reserve_a = U256::MAX;
+    }
+    (amountB_out, new_reserve_a, new_reserve_b)
+}
+
+pub fn calc_sandwich_optima_in(
+    user_amount_in: U256,
+    user_min_recv_token: U256,
+    reserve_weth: U256,
+    reserve_token: U256,
+) -> U256 {
+    let callF = |amountIn: U256| -> U256 {
+        let frontrunState = get_univ2_data_given_in(amountIn, reserve_weth, reserve_token);
+        let victimState = get_univ2_data_given_in(user_amount_in, frontrunState.1, frontrunState.2);
+        victimState.0
+    };
+
+    /// FIXME: ge function with U256
+    let passF = |amountOut: U256| -> bool { amountOut.ge(&user_min_recv_token) };
+
+    let optimal_weth_in = binary_search(U256::from(0), U256::from(100), callF, passF);
+    optimal_weth_in
+}
+
+pub fn binary_search<F, G>(left: U256, right: U256, cal_func: F, pass_func: G) -> U256
+where
+    F: Fn(U256) -> U256,
+    G: Fn(U256) -> bool,
+{
+    /// tolerance is 1%
+    let tolerance = 100;
+
+    let mut mid = (right.saturating_add(left))
+        .checked_div(U256::from(2))
+        .unwrap();
+
+    let gap = right.saturating_sub(left);
+
+    if gap.gt(&(mid / tolerance)) {
+        let out = cal_func(mid);
+
+        if pass_func(out) {
+            return binary_search(mid, right, cal_func, pass_func);
+        }
+        return binary_search(left, mid, cal_func, pass_func);
+    }
+
+    if mid.lt(&U256::zero()) {
+        return U256::from(0);
+    }
+
+    return mid;
 }
 
 #[cfg(test)]
