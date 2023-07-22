@@ -1,16 +1,11 @@
 use dotenv::dotenv;
-use ethers::{
-    abi::AbiDecode,
-    prelude::*,
-    providers::{Provider, Ws},
-};
+use ethers::{abi::AbiDecode, prelude::*};
 use eyre::Result;
 use std::env;
 use std::sync::Arc;
 
 pub mod utils;
 use utils::client::*;
-use utils::debug_print::*;
 
 mod constants;
 mod env_store;

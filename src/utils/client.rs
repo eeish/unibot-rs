@@ -22,6 +22,7 @@ use ethers::{
 };
 
 use hex::FromHexError;
+use univ2::PairState;
 
 #[derive(Debug)]
 pub enum UniswapV2Error {
@@ -68,7 +69,7 @@ impl<'a> UniswapV2Client {
             .map_err(|e| UniswapV2Error::ProviderError(e))?;
 
         let wallet = LocalWallet::from(
-            SigningKey::from_bytes(env.get_private_key())
+            SigningKey::from_slice(env.get_private_key())
                 .map_err(|e| UniswapV2Error::SigningError(e))?,
         )
         .with_chain_id(chain_id.as_u64());
@@ -116,6 +117,68 @@ impl<'a> UniswapV2Client {
         let pair_to_sandwich = self.get_uni_pair_address(weth, token);
         let (weth_reserve, token_reserve) =
             self.get_univ2_reserve(pair_to_sandwich, weth, token).await;
+
+        let optimal_weth_in = univ2::calc_sandwich_optima_in(
+            user_amount_in,
+            user_min_recv,
+            weth_reserve.into(),
+            token_reserve.into(),
+        );
+
+        if optimal_weth_in.lt(&U256::zero()) {
+            return;
+        }
+    }
+
+    pub async fn get_sandwitch_state(
+        &self,
+        optimal_sandwich_weth_in: U256,
+        user_weth_in: U256,
+        user_min_recv: U256,
+        reserve_weth: U256,
+        reserve_token: U256,
+    ) -> Option<(
+        U256,         // revenue
+        U256,         // optimal_sandwich_weth_in
+        U256,         // user_amount_in
+        U256,         // user_min_recv
+        (U256, U256), // reserve_state
+        PairState,    // frontrun_state
+        PairState,    // victim_state
+        PairState,    // backrun_state
+    )> {
+        let frontrun_state = PairState::from_tuple(univ2::get_univ2_data_given_in(
+            optimal_sandwich_weth_in,
+            reserve_weth,
+            reserve_token,
+        ));
+        let victim_state = PairState::from_tuple(univ2::get_univ2_data_given_in(
+            user_weth_in,
+            frontrun_state.new_reserve_a,
+            frontrun_state.new_reserve_b,
+        ));
+        let backrun_state = PairState::from_tuple(univ2::get_univ2_data_given_in(
+            frontrun_state.amount_out,
+            victim_state.new_reserve_b,
+            victim_state.new_reserve_a,
+        ));
+
+        // Sanity check
+        if victim_state.amount_out < user_min_recv {
+            return None;
+        }
+
+        // Return
+        Some((
+            backrun_state.amount_out - optimal_sandwich_weth_in, // revenue
+            optimal_sandwich_weth_in,
+            user_weth_in,
+            user_min_recv,
+            (reserve_weth, reserve_token), // reserve_state
+            frontrun_state,
+            victim_state,
+            backrun_state,
+        ))
     }
 
     pub async fn get_univ2_exact_weth_token_min_recv(
@@ -164,8 +227,8 @@ impl<'a> UniswapV2Client {
         //// let input = abi::encode(&vec![Token::Address(from), Token::Address(to)]);
         let salt = keccak256(&extend_byte_array);
 
-        let salt2 = hex::decode("4aafb64a36177dc82e7ace74cf60cc655659bc049da9533b5f7a6881bea995c6")
-            .unwrap();
+        // let salt2 = hex::decode("4aafb64a36177dc82e7ace74cf60cc655659bc049da9533b5f7a6881bea995c6")
+        //    .unwrap();
 
         let pair_address = ethers::core::utils::get_create2_address_from_hash(
             factory,

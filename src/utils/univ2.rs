@@ -10,6 +10,23 @@ abigen!(
     ]"#,
 );
 
+#[derive(Clone)]
+pub struct PairState {
+    pub amount_out: U256,
+    pub new_reserve_a: U256,
+    pub new_reserve_b: U256,
+}
+
+impl PairState {
+    pub fn from_tuple(t: (U256, U256, U256)) -> Self {
+        Self {
+            amount_out: t.0,
+            new_reserve_a: t.1,
+            new_reserve_b: t.2,
+        }
+    }
+}
+
 pub fn get_uni_pair_address(from: Address, to: Address) -> Address {
     let (from, to) = sort_token(from, to);
 
@@ -55,17 +72,18 @@ pub fn get_univ2_data_given_out(
     reserve_from: U256,
     reserve_to: U256,
 ) -> (U256, U256, U256) {
-    let mut new_reserve_to = reserve_to - user_min_recv;
-    if new_reserve_to < U256::from(0) || new_reserve_to > reserve_to {
-        new_reserve_to = U256::from(1);
-    }
+    // Use checked_sub to avoid underflow
+    let mut new_reserve_to = match reserve_to.checked_sub(user_min_recv) {
+        Some(result) => result,
+        None => return (U256::zero(), reserve_from, reserve_to), // return early with appropriate values
+    };
 
     let numerator = reserve_from * user_min_recv * 1000;
     let denominator = reserve_to * 997;
     let a_amount_in = numerator / denominator + 1;
 
     let (mut new_reserve_from, ok) = reserve_from.overflowing_add(a_amount_in);
-    if !ok {
+    if ok {
         new_reserve_from = U256::MAX;
     }
 
@@ -100,20 +118,20 @@ pub fn calc_sandwich_optima_in(
     reserve_weth: U256,
     reserve_token: U256,
 ) -> U256 {
-    let callF = |amountIn: U256| -> U256 {
+    let call_f = |amountIn: U256| -> U256 {
         let frontrunState = get_univ2_data_given_in(amountIn, reserve_weth, reserve_token);
         let victimState = get_univ2_data_given_in(user_amount_in, frontrunState.1, frontrunState.2);
         victimState.0
     };
 
-    /// FIXME: ge function with U256
-    let passF = |amountOut: U256| -> bool { amountOut.ge(&user_min_recv_token) };
+    // FIXME: ge function with U256
+    let pass_f = |amountOut: U256| -> bool { amountOut.ge(&user_min_recv_token) };
 
-    let optimal_weth_in = binary_search(U256::from(0), U256::from(100), callF, passF);
+    let optimal_weth_in = binary_search(U256::from(0), U256::from(100), call_f, pass_f);
     optimal_weth_in
 }
 
-pub fn binary_search<F, G>(left: U256, right: U256, cal_func: F, pass_func: G) -> U256
+pub fn binary_search<F, G>(mut left: U256, mut right: U256, cal_func: F, pass_func: G) -> U256
 where
     F: Fn(U256) -> U256,
     G: Fn(U256) -> bool,
@@ -121,26 +139,25 @@ where
     /// tolerance is 1%
     let tolerance = 100;
 
-    let mut mid = (right.saturating_add(left))
-        .checked_div(U256::from(2))
-        .unwrap();
+    while right.saturating_sub(left) > U256::one() {
+        let mid = (right.saturating_add(left)) >> 1;
 
-    let gap = right.saturating_sub(left);
+        let gap = right.saturating_sub(left);
 
-    if gap.gt(&(mid / tolerance)) {
-        let out = cal_func(mid);
+        if gap.gt(&(mid / tolerance)) {
+            let out = cal_func(mid);
 
-        if pass_func(out) {
-            return binary_search(mid, right, cal_func, pass_func);
+            if pass_func(out) {
+                left = mid;
+            } else {
+                right = mid;
+            }
+        } else {
+            return mid;
         }
-        return binary_search(left, mid, cal_func, pass_func);
     }
 
-    if mid.lt(&U256::zero()) {
-        return U256::from(0);
-    }
-
-    return mid;
+    right
 }
 
 #[cfg(test)]
@@ -181,5 +198,15 @@ mod tests {
             res,
             get_univ2_data_given_out(U256::from(233), U256::from(1233), U256::from(23533))
         );
+    }
+
+    // generate pub fn binary_search<F, G>(left: U256, right: U256, cal_func: F, pass_func: G) -> U256  test
+    #[test]
+    fn test_binary_search() {
+        let left = U256::from(1);
+        let right = U256::from(3);
+        let pass_func = |amount_out: U256| -> bool { amount_out.ge(&U256::from(10)) };
+
+        assert_eq!(U256::from(2), binary_search(left, right, |x| x, pass_func));
     }
 }
