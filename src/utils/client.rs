@@ -5,6 +5,7 @@ use crate::utils::univ2;
 
 use ethers::prelude::*;
 use ethers::utils::keccak256;
+use log::{debug, info, warn};
 use std::env::VarError;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -22,7 +23,7 @@ use ethers::{
 };
 
 use hex::FromHexError;
-use univ2::PairState;
+use univ2::{PairState, SandWichState};
 
 #[derive(Debug)]
 pub enum UniswapV2Error {
@@ -126,7 +127,28 @@ impl<'a> UniswapV2Client {
         );
 
         if optimal_weth_in.lt(&U256::zero()) {
+            warn!("nothing to sandwithd");
             return;
+        }
+
+        let sandwich_state = self
+            .get_sandwitch_state(
+                optimal_weth_in,
+                user_amount_in,
+                user_min_recv,
+                weth_reserve.into(),
+                token_reserve.into(),
+            )
+            .await;
+
+        match sandwich_state {
+            Some(state) => {
+                info!("sandwich target founed");
+            }
+            None => {
+                warn!("sandwich sanity check failed");
+                return;
+            }
         }
     }
 
@@ -137,16 +159,7 @@ impl<'a> UniswapV2Client {
         user_min_recv: U256,
         reserve_weth: U256,
         reserve_token: U256,
-    ) -> Option<(
-        U256,         // revenue
-        U256,         // optimal_sandwich_weth_in
-        U256,         // user_amount_in
-        U256,         // user_min_recv
-        (U256, U256), // reserve_state
-        PairState,    // frontrun_state
-        PairState,    // victim_state
-        PairState,    // backrun_state
-    )> {
+    ) -> Option<SandWichState> {
         let frontrun_state = PairState::from_tuple(univ2::get_univ2_data_given_in(
             optimal_sandwich_weth_in,
             reserve_weth,
@@ -168,17 +181,26 @@ impl<'a> UniswapV2Client {
             return None;
         }
 
+        let revenue = backrun_state.amount_out - optimal_sandwich_weth_in;
+        let user_amount_in = user_weth_in;
+        let user_min_recv = user_min_recv;
+        let reserve_state = (reserve_weth, reserve_token);
+
+        let front_run = frontrun_state;
+        let victim = victim_state;
+        let back_run = backrun_state;
+
         // Return
-        Some((
-            backrun_state.amount_out - optimal_sandwich_weth_in, // revenue
+        Some(SandWichState {
+            revenue,
             optimal_sandwich_weth_in,
-            user_weth_in,
+            user_amount_in,
             user_min_recv,
-            (reserve_weth, reserve_token), // reserve_state
-            frontrun_state,
-            victim_state,
-            backrun_state,
-        ))
+            reserve_state,
+            front_run,
+            victim,
+            back_run,
+        })
     }
 
     pub async fn get_univ2_exact_weth_token_min_recv(

@@ -17,6 +17,21 @@ pub struct PairState {
     pub new_reserve_b: U256,
 }
 
+#[derive(Clone)]
+pub struct SandWichState {
+    pub revenue: U256,
+    pub optimal_sandwich_weth_in: U256,
+    pub user_amount_in: U256,
+    pub user_min_recv: U256,
+
+    // reserve_state: (weth, token)
+    pub reserve_state: (U256, U256),
+
+    pub front_run: PairState,
+    pub victim: PairState,
+    pub back_run: PairState,
+}
+
 impl PairState {
     pub fn from_tuple(t: (U256, U256, U256)) -> Self {
         Self {
@@ -90,6 +105,7 @@ pub fn get_univ2_data_given_out(
     (a_amount_in, new_reserve_from, new_reserve_to)
 }
 
+// need write test
 pub fn get_univ2_data_given_in(
     amountA_in: U256,
     reserve_a: U256,

@@ -1,6 +1,7 @@
 use dotenv::dotenv;
 use ethers::{abi::AbiDecode, prelude::*};
 use eyre::Result;
+use log::{debug, error, info, log_enabled, Level};
 use std::env;
 use std::sync::Arc;
 
@@ -26,6 +27,9 @@ abigen!(
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    env_logger::init();
+    debug!("this is a debug {}", "message");
+
     dotenv().ok();
 
     let infura_url: String = env::var("INFURA_MAINNET_WS").unwrap();
